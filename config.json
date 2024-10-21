@@ -1,0 +1,14 @@
+{
+    "daily_bonus": true,
+    "claim_ref": true,
+    "check_tasks": true,
+    "open_order": true,
+    "use_telegram_header": true,
+    "use_protection": true,
+    "use_proxy": false,
+    "random_user_agent": false,
+    "request_delay": [1, 3],
+    "action_delay": [5, 10],
+    "account_delay": [30, 60],
+    "max_retries": 3
+}
