@@ -16,7 +16,16 @@ def print_(word):
 
 def clear_terminal():
     os.system('cls' if os.name == 'nt' else 'clear')
-
+        
+def key_bot():
+    header = """
+╔══════════════ ETHERDROP BOT ══════════════╗
+║              Bot Automation               ║
+║         Developed by @ItbaArts_Dev        ║
+╚═══════════════════════════════════════════╝
+    """
+    print(header)
+    
 def load_query():
     try:
         with open('query.txt', 'r') as f:
@@ -327,16 +336,7 @@ class Ether:
         if response is not None:
             data = response.json()
             return data
-        
-def key_bot():
-    header = """
-╔══════════════ ETHERDROP BOT ══════════════╗
-║              Bot Automation               ║
-║         Developed by @ItbaArts_Dev        ║
-╚═══════════════════════════════════════════╝
-    """
-    print(header)
-    
+
     def post_order(self, token, payload):
         url = 'https://api.miniapp.dropstab.com/api/order'
         headers = {
