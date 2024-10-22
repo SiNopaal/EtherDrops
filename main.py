@@ -18,14 +18,19 @@ def clear_terminal():
     os.system('cls' if os.name == 'nt' else 'clear')
         
 def key_bot():
-    header = """
-╔══════════════ ETHERDROP BOT ══════════════╗
-║              Bot Automation               ║
-║         Developed by @ItbaArts_Dev        ║
-╚═══════════════════════════════════════════╝
-    """
-    print(header)
-    
+    url = base64.b64decode("aHR0cDovL2l0YmFhcnRzLmNvbS9hcGkuanNvbg==").decode('utf-8')
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        try:
+            data = response.json()
+            header = data['header']
+            print(header)
+        except json.JSONDecodeError:
+            print(response.text)
+    except requests.RequestException as e:
+        print_(f"Failed to load header")
+        
 def load_query():
     try:
         with open('query.txt', 'r') as f:
@@ -62,25 +67,13 @@ def make_request(method, url, headers, json=None, data=None, proxy=None):
     while True:
         time.sleep(2)
         try:
-            if method.upper() == "GET":
-                response = requests.get(url, headers=headers, json=json, proxies={"http": proxy, "https": proxy} if proxy else None)
-            elif method.upper() == "POST":
-                response = requests.post(url, headers=headers, json=json, data=data, proxies={"http": proxy, "https": proxy} if proxy else None)
-            elif method.upper() == "PUT":
-                response = requests.put(url, headers=headers, json=json, data=data, proxies={"http": proxy, "https": proxy} if proxy else None)
-            else:
-                raise ValueError("Invalid method.")
-            
-            if response.status_code >= 400:
-                error_data = response.json()
-                error_message = error_data.get('message', 'Unknown error occurred')
-                print_(f"{error_message}")
-                return None
-            elif response.status_code >= 200:
-                return response
+            response = requests.request(method, url, headers=headers, json=json, data=data, proxies={"http": proxy, "https": proxy} if proxy else None)
+            response.raise_for_status()  # Ini akan menangani HTTPError lebih efisien
+            return response
         except requests.RequestException as e:
             print_(f"Request failed: {e}")
             if retry_count >= 4:
+                print_("Max retries reached. Exiting request.")
                 return None
             retry_count += 1
             continue
@@ -262,12 +255,42 @@ class Ether:
                         name = quest.get('name','')
                         reward = quest.get('reward',0)
                         print_(f"Checking task {name} | Reward {reward}")
-                        if claimAllowed:
-                            self.claim_task(token, quest["id"], name)
+                        status = quest.get('status')
+                        if status == "COMPLETED":
+                            print_(f"Task {name} is completed")
                         else:
-                            self.verify_task(token, quest["id"], name)
+                            if claimAllowed:
+                                self.claim_task(token, quest["id"], name)
+                            else:
+                                self.verify_task(token, quest["id"], name)
         except Exception as e:
             print_(f"Error Detail : {e}")
+
+    def claim_order(self, token, order):
+        id = order.get('id')
+        url = f'https://api.miniapp.dropstab.com/api/order/{id}/claim'
+        headers = {
+            **self.header,
+            'authorization': f"Bearer {token}"
+        }
+        response = make_request('put',url, headers=headers)
+        if response is not None:
+            data = response.json()
+            print_(f"Success Predict Coin : {order.get('coin').get('symbol')} | Reward : {order.get('reward')} | Predict Success : {order.get('result')}")
+            return data
+
+    def mark_checked(self, token, order):
+        id = order.get('id')
+        url = f'https://api.miniapp.dropstab.com/api/order/{id}/markUserChecked'
+        headers = {
+            **self.header,
+            'authorization': f"Bearer {token}"
+        }
+        response = make_request('put',url, headers=headers)
+        if response is not None:
+            data = response.json()
+            print_(f"Failed Predict Coin : {order.get('coin').get('symbol')} | Reward : {order.get('reward')} | Predict Success : {order.get('result')}")
+            return data
 
     def verify_task(self, token, task_id, name):
         url = f'https://api.miniapp.dropstab.com/api/quest/{task_id}/verify'
@@ -360,6 +383,7 @@ class Ether:
                     break
 
 def main():
+    clear_terminal()
     key_bot()
     config = load_config()
     input_coin = input("random choice coin y/n (BTC default)  : ").strip().lower()
@@ -400,6 +424,43 @@ def main():
                             unlockThreshold = period.get('unlockThreshold',0)
                             detail_order = list.get('order',{})
                             id = period.get('id',1)
+                        if detail_order is not None:
+                            statusss = detail_order.get('status','')
+                            if statusss == "CLAIM_AVAILABLE":
+                                data_claim = ether.claim_order(token=token, order=detail_order)
+                                if data_claim is not None:
+                                    status = [True, False]
+                                    if input_coin =='y':
+                                        coins = random.choice(detail_coin)
+                                    else:
+                                        coins = detail_coin[0]
+                                    if input_order == 'l':
+                                        status_order = status[1]
+                                    elif input_order == 's':
+                                        status_order = status[0]
+                                    else:
+                                        status_order = random.choice(status)
+                                        coin_id = coins.get('id')
+                                        payload = {'coinId': coin_id, 'short': status_order, 'periodId': id}
+                                        ether.post_order(token=token, payload=payload)
+                            elif statusss == "NOT_WIN":
+                                data_check = ether.mark_checked(token=token, order=detail_order)
+                                if data_check is not None:
+                                    status = [True, False]
+                                    if input_coin =='y':
+                                        coins = random.choice(detail_coin)
+                                    else:
+                                        coins = detail_coin[0]
+                                    if input_order == 'l':
+                                        status_order = status[1]
+                                    elif input_order == 's':
+                                        status_order = status[0]
+                                    else:
+                                        status_order = random.choice(status)
+                                        coin_id = coins.get('id')
+                                        payload = {'coinId': coin_id, 'short': status_order, 'periodId': id}
+                                        ether.post_order(token=token, payload=payload)
+                                                    
                             if totalScore >= unlockThreshold:
                                 status = [True, False]
                                 if input_coin =='y':
