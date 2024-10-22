@@ -249,7 +249,7 @@ class Ether:
                 for task in tasks:
                     name = task.get('name','')
                     quests = task.get('quests',[])
-                    print_(f"== Title Task : {name} ==")
+                    print_(f"Title Task : {name}")
                     for quest in quests:
                         claimAllowed = quest.get('claimAllowed',False)
                         name = quest.get('name','')
@@ -390,7 +390,7 @@ def main():
     input_order = input("open order l(long), s(short), r(random)  : ").strip().lower()
     while True:
         start_time = time.time()
-        delay = 1*3710
+        delay = 2*3700
         clear_terminal()
         key_bot() 
         queries = load_query()
@@ -402,34 +402,25 @@ def main():
             if token is not None:
                 user_info = ether.get_user_info(token)
                 print_(f"TGID : {user_info.get('tgId','')} | Username : {user_info.get('tgUsername','None')} | Balance : {user_info.get('balance',0)}")
-                
-                if config["daily_bonus"]:
-                    ether.daily_bonus(token)
-                    time.sleep(random.uniform(config["action_delay"][0], config["action_delay"][1]))
-                
-                if config["claim_ref"]:
-                    ether.claim_ref(token)
-                    time.sleep(random.uniform(config["action_delay"][0], config["action_delay"][1]))
-                
-                if config["open_order"]:
-                    data_order = ether.get_order(token)
-                    if data_order is not None:
-                        totalScore = data_order.get('totalScore',0)
-                        results = data_order.get('results',{})
-                        print_(f"Result Game : {results.get('orders',0)} Order | {results.get('wins',0)} Wins | {results.get('loses',0)} Loses | {results.get('winRate',0.0)} Winrate")
-                        list_periods = data_order.get('periods',[])
-                        detail_coin = ether.get_coins(token, input_order)
-                        for list in list_periods:
-                            period = list.get('period',{})
-                            unlockThreshold = period.get('unlockThreshold',0)
-                            detail_order = list.get('order',{})
-                            id = period.get('id',1)
+                ether.daily_bonus(token)
+                data_order = ether.get_order(token)
+                if data_order:
+                    totalScore = data_order.get('totalScore',0)
+                    results = data_order.get('results',{})
+                    print_(f"Result Game : {results.get('orders',0)} Order | {results.get('wins',0)} Wins | {results.get('loses',0)} Loses | {results.get('winRate',0.0)} Winrate")
+                    list_periods = data_order.get('periods',[])
+                    detail_coin = ether.get_coins(token, input_order)
+                    for list in list_periods:
+                        period = list.get('period',{})
+                        unlockThreshold = period.get('unlockThreshold',0)
+                        detail_order = list.get('order',{})
+                        id = period.get('id',1)
+                        status = [True, False]  # Define status here to ensure it's always available
                         if detail_order is not None:
                             statusss = detail_order.get('status','')
                             if statusss == "CLAIM_AVAILABLE":
                                 data_claim = ether.claim_order(token=token, order=detail_order)
                                 if data_claim is not None:
-                                    status = [True, False]
                                     if input_coin =='y':
                                         coins = random.choice(detail_coin)
                                     else:
@@ -440,13 +431,12 @@ def main():
                                         status_order = status[0]
                                     else:
                                         status_order = random.choice(status)
-                                        coin_id = coins.get('id')
-                                        payload = {'coinId': coin_id, 'short': status_order, 'periodId': id}
-                                        ether.post_order(token=token, payload=payload)
+                                    coin_id = coins.get('id')
+                                    payload = {'coinId': coin_id, 'short': status_order, 'periodId': id}
+                                    ether.post_order(token=token, payload=payload)
                             elif statusss == "NOT_WIN":
                                 data_check = ether.mark_checked(token=token, order=detail_order)
                                 if data_check is not None:
-                                    status = [True, False]
                                     if input_coin =='y':
                                         coins = random.choice(detail_coin)
                                     else:
@@ -457,37 +447,27 @@ def main():
                                         status_order = status[0]
                                     else:
                                         status_order = random.choice(status)
-                                        coin_id = coins.get('id')
-                                        payload = {'coinId': coin_id, 'short': status_order, 'periodId': id}
-                                        ether.post_order(token=token, payload=payload)
-                                                    
-                            if totalScore >= unlockThreshold:
-                                status = [True, False]
-                                if input_coin =='y':
-                                    coins = random.choice(detail_coin)
-                                else:
-                                    coins = detail_coin[0]
-
-                                if input_order == 'l':
-                                    status_order = status[1]
-                                elif input_order == 's':
-                                    status_order = status[0]
-                                else:
-                                    status_order = random.choice(status)
-                                if detail_order is None:
                                     coin_id = coins.get('id')
                                     payload = {'coinId': coin_id, 'short': status_order, 'periodId': id}
                                     ether.post_order(token=token, payload=payload)
                         
-                if config["check_tasks"]:
-                    ether.check_tasks(token)
-                    time.sleep(random.uniform(config["action_delay"][0], config["action_delay"][1]))
-
-            # Delay antar akun
-            if index < sum:  # Tidak perlu delay setelah akun terakhir
-                account_delay = random.uniform(config["account_delay"][0], config["account_delay"][1])
-                print_(f"Menunggu {account_delay:.2f} detik sebelum akun berikutnya...")
-                time.sleep(account_delay)
+                        if totalScore >= unlockThreshold:
+                            if input_coin =='y':
+                                coins = random.choice(detail_coin)
+                            else:
+                                coins = detail_coin[0]
+                            if input_order == 'l':
+                                status_order = status[1]
+                            elif input_order == 's':
+                                status_order = status[0]
+                            else:
+                                status_order = random.choice(status)
+                            if detail_order is None:
+                                coin_id = coins.get('id')
+                                payload = {'coinId': coin_id, 'short': status_order, 'periodId': id}
+                                ether.post_order(token=token, payload=payload)
+                        
+                ether.check_tasks(token)                
 
         end_time = time.time()
         total = delay - (end_time-start_time)
